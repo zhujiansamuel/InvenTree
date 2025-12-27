@@ -71,7 +71,7 @@ echo -e "\n${YELLOW}[7/8] 安装 Python 依赖...${NC}"
 source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
-pip install -r ../contrib/dev_reqs/requirements.txt
+pip install -r ../../contrib/dev_reqs/requirements.txt
 echo -e "${GREEN}✓ Python 依赖已安装${NC}"
 
 # 复制环境变量文件
@@ -88,7 +88,7 @@ fi
 echo -e "\n${YELLOW}[8/8] 运行数据库迁移...${NC}"
 cd src/backend
 source venv/bin/activate
-export $(cat ../../.env | xargs)
+export $(cat ../../.env | grep -v '^#' | xargs)
 python InvenTree/manage.py migrate
 python InvenTree/manage.py collectstatic --noinput
 echo -e "${GREEN}✓ 数据库迁移完成${NC}"

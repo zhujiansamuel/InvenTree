@@ -66,7 +66,7 @@ echo [6/8] 安装 Python 依赖...
 call venv\Scripts\activate.bat
 python -m pip install --upgrade pip
 pip install -r requirements.txt
-pip install -r ..\..\contrib\dev_reqs\requirements.txt
+pip install -r ..\\..\contrib\dev_reqs\requirements.txt
 echo ✓ Python 依赖已安装
 
 REM 复制环境变量文件
