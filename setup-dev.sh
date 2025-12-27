@@ -120,13 +120,21 @@ echo -e "\n${YELLOW}[8/8] 运行数据库迁移...${NC}"
 cd src/backend
 source venv/bin/activate
 
-# 加载环境变量（使用更可靠的方式）
+# 加载环境变量（使用显式导出方式）
 echo "加载环境变量..."
 cd ../..
 if [ -f .env ]; then
-    set -a
-    source .env
-    set +a
+    # 方法：逐行读取并导出
+    while IFS='=' read -r key value; do
+        # 跳过注释和空行
+        if [[ ! $key =~ ^#  && -n $key ]]; then
+            # 移除前后空格
+            key=$(echo "$key" | xargs)
+            value=$(echo "$value" | xargs)
+            # 导出变量
+            export "$key=$value"
+        fi
+    done < .env
     echo -e "${GREEN}✓ 环境变量已加载${NC}"
 else
     echo -e "${RED}错误: .env 文件不存在${NC}"
@@ -136,8 +144,15 @@ fi
 # 验证关键环境变量
 if [ -z "$INVENTREE_DB_ENGINE" ]; then
     echo -e "${RED}错误: INVENTREE_DB_ENGINE 未设置${NC}"
+    echo "当前环境变量："
+    env | grep INVENTREE_DB || true
     exit 1
 fi
+
+echo "数据库配置："
+echo "  ENGINE: $INVENTREE_DB_ENGINE"
+echo "  NAME: $INVENTREE_DB_NAME"
+echo "  HOST: $INVENTREE_DB_HOST"
 
 cd src/backend
 python InvenTree/manage.py migrate
