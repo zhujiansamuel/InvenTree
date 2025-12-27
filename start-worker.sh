@@ -15,12 +15,17 @@ echo "======================================${NC}"
 cd src/backend
 source venv/bin/activate
 
-# 加载环境变量（使用更可靠的方式）
+# 加载环境变量（使用显式导出方式）
 cd ../..
 if [ -f .env ]; then
-    set -a
-    source .env
-    set +a
+    # 逐行读取并导出
+    while IFS='=' read -r key value; do
+        if [[ ! $key =~ ^# && -n $key ]]; then
+            key=$(echo "$key" | xargs)
+            value=$(echo "$value" | xargs)
+            export "$key=$value"
+        fi
+    done < .env
 else
     echo -e "${RED}错误: .env 文件不存在${NC}"
     echo "请先运行: ./setup-dev.sh"
