@@ -15,8 +15,18 @@ echo "======================================${NC}"
 cd src/backend
 source venv/bin/activate
 
-# 加载环境变量
-export $(cat ../../.env | grep -v '^#' | xargs)
+# 加载环境变量（使用更可靠的方式）
+cd ../..
+if [ -f .env ]; then
+    set -a
+    source .env
+    set +a
+else
+    echo -e "${RED}错误: .env 文件不存在${NC}"
+    echo "请先运行: ./setup-dev.sh"
+    exit 1
+fi
+cd src/backend
 
 # 启动 Django-Q Worker
 echo -e "\n${GREEN}Django-Q Worker 启动中...${NC}"

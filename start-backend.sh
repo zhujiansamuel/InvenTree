@@ -24,9 +24,20 @@ echo -e "\n${YELLOW}激活 Python 虚拟环境...${NC}"
 cd src/backend
 source venv/bin/activate
 
-# 加载环境变量
+# 加载环境变量（使用更可靠的方式）
 echo -e "${YELLOW}加载环境变量...${NC}"
-export $(cat ../../.env | grep -v '^#' | xargs)
+cd ../..
+if [ -f .env ]; then
+    set -a
+    source .env
+    set +a
+    echo -e "${GREEN}✓ 环境变量已加载${NC}"
+else
+    echo -e "${RED}错误: .env 文件不存在${NC}"
+    echo "请先运行: ./setup-dev.sh"
+    exit 1
+fi
+cd src/backend
 
 # 运行迁移（如果需要）
 echo -e "${YELLOW}检查数据库迁移...${NC}"

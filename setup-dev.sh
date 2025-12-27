@@ -29,14 +29,44 @@ if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/
 fi
 echo -e "${GREEN}✓ Docker Compose 已安装${NC}"
 
-# 检查 Python
-echo -e "\n${YELLOW}[3/8] 检查 Python 3.11+...${NC}"
+# 检查 Python 版本
+echo -e "\n${YELLOW}[3/8] 检查 Python 3.11 或 3.12...${NC}"
 if ! command -v python3 &> /dev/null; then
-    echo -e "${RED}错误: 请先安装 Python 3.11+${NC}"
+    echo -e "${RED}错误: 请先安装 Python 3.11 或 3.12${NC}"
+    echo "macOS 安装方法: brew install python@3.12"
     exit 1
 fi
-PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
-echo -e "${GREEN}✓ Python ${PYTHON_VERSION} 已安装${NC}"
+
+PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2 | cut -d'.' -f1,2)
+PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d'.' -f1)
+PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d'.' -f2)
+
+PYTHON_CMD=python3
+
+# 检查版本是否合适
+if [ "$PYTHON_MAJOR" -eq 3 ] && ([ "$PYTHON_MINOR" -eq 11 ] || [ "$PYTHON_MINOR" -eq 12 ]); then
+    echo -e "${GREEN}✓ Python ${PYTHON_VERSION} 已安装${NC}"
+elif [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 13 ]; then
+    echo -e "${YELLOW}警告: Python ${PYTHON_VERSION} 可能太新，InvenTree 推荐使用 Python 3.11 或 3.12${NC}"
+    echo -e "${YELLOW}尝试寻找兼容版本...${NC}"
+
+    if command -v python3.12 &> /dev/null; then
+        PYTHON_CMD=python3.12
+        PYTHON_VERSION=$(python3.12 --version 2>&1 | cut -d' ' -f2 | cut -d'.' -f1,2)
+        echo -e "${GREEN}✓ 找到 Python 3.12，将使用此版本${NC}"
+    elif command -v python3.11 &> /dev/null; then
+        PYTHON_CMD=python3.11
+        PYTHON_VERSION=$(python3.11 --version 2>&1 | cut -d' ' -f2 | cut -d'.' -f1,2)
+        echo -e "${GREEN}✓ 找到 Python 3.11，将使用此版本${NC}"
+    else
+        echo -e "${YELLOW}未找到 Python 3.11/3.12，继续使用 Python ${PYTHON_VERSION}${NC}"
+        echo -e "${YELLOW}如果遇到问题，请安装: brew install python@3.12${NC}"
+    fi
+else
+    echo -e "${RED}错误: Python ${PYTHON_VERSION} 版本过低，需要 3.11 或更高${NC}"
+    echo "macOS 安装方法: brew install python@3.12"
+    exit 1
+fi
 
 # 检查 Node.js
 echo -e "\n${YELLOW}[4/8] 检查 Node.js...${NC}"
@@ -60,8 +90,9 @@ sleep 5
 echo -e "\n${YELLOW}[6/8] 设置 Python 虚拟环境...${NC}"
 cd src/backend
 if [ ! -d "venv" ]; then
-    python3 -m venv venv
-    echo -e "${GREEN}✓ 虚拟环境已创建${NC}"
+    echo "使用 $PYTHON_CMD 创建虚拟环境..."
+    $PYTHON_CMD -m venv venv
+    echo -e "${GREEN}✓ 虚拟环境已创建 (Python $PYTHON_VERSION)${NC}"
 else
     echo -e "${GREEN}✓ 虚拟环境已存在${NC}"
 fi
@@ -88,7 +119,27 @@ fi
 echo -e "\n${YELLOW}[8/8] 运行数据库迁移...${NC}"
 cd src/backend
 source venv/bin/activate
-export $(cat ../../.env | grep -v '^#' | xargs)
+
+# 加载环境变量（使用更可靠的方式）
+echo "加载环境变量..."
+cd ../..
+if [ -f .env ]; then
+    set -a
+    source .env
+    set +a
+    echo -e "${GREEN}✓ 环境变量已加载${NC}"
+else
+    echo -e "${RED}错误: .env 文件不存在${NC}"
+    exit 1
+fi
+
+# 验证关键环境变量
+if [ -z "$INVENTREE_DB_ENGINE" ]; then
+    echo -e "${RED}错误: INVENTREE_DB_ENGINE 未设置${NC}"
+    exit 1
+fi
+
+cd src/backend
 python InvenTree/manage.py migrate
 python InvenTree/manage.py collectstatic --noinput
 echo -e "${GREEN}✓ 数据库迁移完成${NC}"
